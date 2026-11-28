@@ -127,3 +127,53 @@ test("Dashboard inclui painel de conciliação e carrega carteira operacional is
  assert.match(js,/carregarCarteiraOperacionalMasterLocal/);
  assert.match(js,/renderAuditoriaCarteiraMasterLocal/);
 });
+
+
+test("M06 concilia principal e juros sem subtrair duas vezes recebimentos já aplicados ao saldo",()=>{
+  const pedido={id:"v-nova",clientePlataformaId:tenant,valorEmprestadoCentavos:10000,
+    jurosValorCentavos:2000,valorTotalVendaCentavos:12000,statusVenda:"ATIVA",dataVenda:dia};
+  const pagamentoConfirmado={id:"p-nova",clientePlataformaId:tenant,vendaId:"v-nova",valorCentavos:3000,
+    statusPagamento:"CONFIRMADO",dataPagamento:dia};
+  const anterior=M.calcular({tenantId:tenant,vendas:[pedido]},dia);
+  assert.equal(anterior.carteiraCentavos,12000,"emprestado + juros entram na carteira");
+  const semSaldo=M.calcular({tenantId:tenant,vendas:[pedido],pagamentos:[pagamentoConfirmado]},dia);
+  assert.equal(semSaldo.carteiraCentavos,9000,"fallback usa total - pagamento");
+  const comSaldo=M.calcular({tenantId:tenant,vendas:[{...pedido,saldoDevedorCentavos:9000}],
+    pagamentos:[pagamentoConfirmado]},dia);
+  assert.equal(comSaldo.carteiraCentavos,9000,"baixa já computada no contrato não é aplicada novamente");
+  assert.equal(comSaldo.recebidoHojeCentavos,3000);
+  assert.equal(M.valorEmprestado(pedido),10000,"desembolso sai do caixa sem os juros futuros");
+  assert.equal(M.totalContrato(pedido),12000);
+});
+test("M06 caixa do dia soma apenas saldos transacionais dos vendedores abertos",()=>{
+  const c=(id,vendedor,saldo,status="ABERTO",data=dia)=>({id,clientePlataformaId:tenant,
+    vendedorId:vendedor,status,dataOperacional:data,saldoInicialCentavos:20000,saldoAtualCentavos:saldo});
+  const caixas=[c("c1","u1",8500),c("c2","u2",9000),c("fechado","u3",99900,"FECHADO"),
+    c("ontem","u4",99900,"ABERTO","2026-11-19"),{...c("out","ux",99900),clientePlataformaId:"empresa-b"}];
+  const dados=M.caixasDoDia({tenantId:tenant,caixas},dia);
+  assert.equal(dados.quantidade,2);
+  assert.equal(dados.centavos,17500);
+  const dashboard=M.calcular({tenantId:tenant,caixas},dia);
+  assert.equal(dashboard.caixaAtualCentavos,17500);
+  assert.equal(dashboard.caixasDia,2);
+});
+test("M06 omite total de caixa quando a consulta não confirma saldos ou tem caixas duplicados",()=>{
+  const caixa={clientePlataformaId:tenant,status:"ABERTO",dataOperacional:dia,
+    vendedorId:"u1",saldoInicialCentavos:20000};
+  assert.equal(M.caixasDoDia({tenantId:tenant,caixas:[{...caixa,id:"sem-saldo"}]},dia).centavos,null);
+  const dois=[{...caixa,id:"a",saldoAtualCentavos:2000},{...caixa,id:"b",saldoAtualCentavos:3000}];
+  assert.equal(M.caixasDoDia({tenantId:tenant,caixas:dois},dia).centavos,null);
+  assert.equal(M.caixasDoDia({tenantId:tenant,caixas:dois},dia).duplicados.length,1);
+});
+test("M06 não contabiliza vendas e pagamentos cancelados ou de outra empresa",()=>{
+  const vendas=[
+    venda("v1",{saldoDevedorCentavos:5000}),
+    venda("v2",{statusVenda:"CANCELADO",saldoDevedorCentavos:99999}),
+    venda("v3",{clientePlataformaId:"empresa-b",saldoDevedorCentavos:99999})
+  ];
+  const payments=[pagamento("p1"),pagamento("p2",{status:"CANCELADO"}),
+    pagamento("p3",{clientePlataformaId:"empresa-b"})];
+  const dados=M.calcular({tenantId:tenant,vendas,pagamentos:payments},dia);
+  assert.equal(dados.carteiraCentavos,5000);
+  assert.equal(dados.recebidoHojeCentavos,10000);
+});

@@ -2556,7 +2556,7 @@ body.integro-data-refreshing .section-card{
   <link rel="stylesheet" href="css/master-local-auditoria.css?v=20261120-v1">
   <link rel="stylesheet" href="css/master-local-conciliacao-v2.css?v=20261121-v4">
   <link rel="stylesheet" href="css/caixas-layout-aprovado.css?v=20261127-caixas-status-nome-v5">
-  <link rel="stylesheet" href="css/dashboard-master-local.css?v=20261124-v1">
+  <link rel="stylesheet" href="css/dashboard-master-local.css?v=20261128-m06-layout-v2">
   <link rel="stylesheet" href="css/equipes-master-local.css?v=20261124-v1">
   <link rel="stylesheet" href="css/integro-sidebar-notifications.css?v=20261126-topo">
   <link rel="stylesheet" href="css/integro-ui-fundacao-20261126.css?v=20261126-oito-perfis-v1">
@@ -3234,10 +3234,10 @@ body.integro-data-refreshing .section-card{
   <script src="js/usuarios.js?v=20261120-master-local-usuarios-v3"></script>
   <script src="js/clientes.js?v=20261121-master-local-clientes-v4"></script>
   <script src="js/vendas.js?v=20261104-vendas-centavos-v2"></script>
-  <script src="js/services/master-local-metrics.js?v=20261120-master-local-kpis-2"></script>
+  <script src="js/services/master-local-metrics.js?v=20261128-m06-caixa-carteira-v1"></script>
   <script src="js/services/master-local-reconciliation.js?v=20261121-v4"></script>
   <script src="js/modules/master-local-reconciliation-ui.js?v=20261121-v6"></script>
-  <script src="js/master-local.js?v=20261121-conciliacao-v6"></script>
+  <script src="js/master-local.js?v=20261128-m06-finance-sync-v2"></script>
   <script src="js/painel-unificado.js?v=20261123-visibilidade-permissoes"></script>
   <script src="js/supervisor-unificado.js?v=20260801-1"></script>
   <script src="js/perfis-unificados.js?v=20261112-vendas-dia-sync-v1&build=20261101-ui-october-safe2&screen=20261123-visibilidade-telas"></script>
@@ -17113,18 +17113,31 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function snapshotCarteiraAte(iso){
-    const caixas = cache("caixas")
-      .filter(c => !isCancelado(c) && isCaixaFechado(c) && valorCarteiraCaixa(c) > 0)
-      .filter(c => dateISO(c) && dateISO(c) <= iso);
-
-    const ultimos = new Map();
-    caixas.forEach(c => {
-      const chave = equipeIdOf(c) || vendedorIdOf(c) || nomeEquipe(c) || idOf(c);
-      const atual = ultimos.get(chave);
-      if(!atual || dateTime(c).getTime() >= dateTime(atual).getTime()) ultimos.set(chave, c);
+    // M06: carteira atual = saldo a receber dos contratos vigentes.
+    // O saldo do contrato já foi reduzido pelo backend na baixa; não subtrair pagamentos outra vez.
+    const M=window.IntegroMasterLocalMetrics;
+    const hoje=todayISO();
+    if(M?.carteiraPorContratos && iso>=hoje){
+      const dados=window.__integroDashboardRealData;
+      const tenant=tenantPrincipal();
+      if(dados && String(dados.tenantId)===String(tenant)){
+        const carteira=M.carteiraPorContratos({tenantId:tenant,
+          vendas:cache("vendas"),pagamentos:cache("pagamentos")});
+        return carteira.centavos/100;
+      }
+    }
+    // Comparativos históricos permanecem ancorados no último fechamento de cada vendedor.
+    // Nunca misturar uma fotografia histórica com a carteira atual.
+    const fechados=cache("caixas").filter(c=>!isCancelado(c)&&isCaixaFechado(c)&&
+      dateISO(c)&&dateISO(c)<=iso&&valorCarteiraCaixa(c)>0);
+    const ultimos=new Map();
+    fechados.forEach(c=>{
+      const key=vendedorIdOf(c)||equipeIdOf(c)||idOf(c);
+      if(!key)return;
+      const anterior=ultimos.get(key);
+      if(!anterior||dateTime(c)>=dateTime(anterior))ultimos.set(key,c);
     });
-    const total = Array.from(ultimos.values()).reduce((s,c)=>s+valorCarteiraCaixa(c),0);
-    return total || (iso >= todayISO() ? carteiraFallbackClientes() : 0);
+    return [...ultimos.values()].reduce((n,c)=>n+valorCarteiraCaixa(c),0);
   }
 
   function recebidoNoDia(iso){
@@ -17387,13 +17400,16 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     const vendas = vendasNoPeriodo(periodo);
     const vendasAnt = vendasNoPeriodo(anterior);
     const caixas = caixasAbertosNoPeriodo(periodo);
-    const caixaAtual = caixas.reduce((s,c) => s + valorCaixaAtual(c), 0);
+    const M=window.IntegroMasterLocalMetrics;
+    const saldosCaixas=caixas.map(c=>M?.saldoCaixa?.(c));
+    const confiavel=saldosCaixas.every(Number.isSafeInteger);
+    const caixaAtual=confiavel?saldosCaixas.reduce((s,c)=>s+c,0)/100:null;
     const gastos = gastosNoPeriodo(periodo);
     const sufixo = periodo.inicio === periodo.fim ? "no dia" : "no período";
 
     text(byId("kpiCarteira"), money(carteira));
-    text(byId("kpiCaixaAtual"), money(caixaAtual));
-    text(byId("kpiCaixaAtualSub"), `${caixas.length} caixa(s) aberto(s) ${sufixo}`);
+    text(byId("kpiCaixaAtual"), caixaAtual===null?"—":money(caixaAtual));
+    text(byId("kpiCaixaAtualSub"), `${caixas.length} caixa(s) aberto(s) ${sufixo}${confiavel?"":" · saldo não confirmado"}`);
     text(byId("kpiGastosHoje"), money(gastos.total));
     text(byId("kpiGastosHojeSub"), `${gastos.lista.length} lançamento(s) ${sufixo}`);
 
@@ -17532,9 +17548,12 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   function renderCaixaAtual(){
     const periodo = periodoAtual();
     const caixas = caixasAbertosNoPeriodo(periodo);
-    const total = caixas.reduce((s,c) => s + valorCaixaAtual(c), 0);
-    const rows = caixas.map(c => `<tr><td>${esc(c.vendedorNome || c.usuarioNome || c.responsavelNome || "Não informado")}</td><td>${esc(nomeEquipe(c))}</td><td>${money(valorCaixaAtual(c))}</td><td>${esc(status(c) || "ABERTO")}</td></tr>`).join("");
-    openDrawer("Caixas do período", `Somente caixas abertos entre ${rotuloPeriodo(periodo)}. Caixas antigos ainda abertos ficam fora desta visão.`, `<div class="insight-summary-grid"><div class="insight-summary-item"><small>Total em caixa</small><strong>${money(total)}</strong></div><div class="insight-summary-item"><small>Caixas abertos</small><strong>${caixas.length}</strong></div></div>${caixas.length ? `<table class="real-table"><thead><tr><th>Responsável</th><th>Equipe</th><th>Saldo</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>` : `<div class="real-empty">Nenhum caixa aberto foi iniciado no período selecionado.</div>`}`);
+    const M=window.IntegroMasterLocalMetrics;
+    const saldos=caixas.map(c=>M?.saldoCaixa?.(c));
+    const confirmado=saldos.every(Number.isSafeInteger);
+    const total=confirmado?saldos.reduce((s,v)=>s+v,0)/100:null;
+    const rows = caixas.map(c => `<tr><td>${esc(c.vendedorNome || c.usuarioNome || c.responsavelNome || "Não informado")}</td><td>${esc(nomeEquipe(c))}</td><td>${M?.saldoCaixa?.(c)===null?"—":money(M.saldoCaixa(c)/100)}</td><td>${esc(status(c) || "ABERTO")}</td></tr>`).join("");
+    openDrawer("Caixas do período", `Somente caixas abertos entre ${rotuloPeriodo(periodo)}. Caixas antigos ainda abertos ficam fora desta visão.`, `<div class="insight-summary-grid"><div class="insight-summary-item"><small>Total em caixa</small><strong>${total===null?"—":money(total)}</strong></div><div class="insight-summary-item"><small>Caixas abertos</small><strong>${caixas.length}</strong></div></div>${caixas.length ? `<table class="real-table"><thead><tr><th>Responsável</th><th>Equipe</th><th>Saldo</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>` : `<div class="real-empty">Nenhum caixa aberto foi iniciado no período selecionado.</div>`}`);
   }
 
   function renderGastosHoje(){
@@ -17573,6 +17592,9 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
       DASHBOARD_PERIODO.filtroManual = true;
       atualizarRotulosPeriodo(p);
       fechar();
+      // O filtro altera a janela consultada: buscar pagamentos e ledger do período,
+      // não reutilizar somente o cache de hoje.
+      await loadAllRealData();
       updateCards();
     };
 

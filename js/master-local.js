@@ -455,22 +455,10 @@ function renderDashboardMasterLocal(){
   setTextSafe("kpiVendasNovas",moedaCentavosMasterLocal(somar(novas)));
   setTextSafe("kpiVendasRenovadas",moedaCentavosMasterLocal(somar(renovacoes)));
   setTextSafe("kpiVendasHojeSub",`${vendasHoje.length} venda(s) no dia`);
-  const caixas=M.apenasTenant(State.getCaixas?.()||[],tenantId)
-    .filter(c=>["ABERTO","REABERTO"].includes(String(c.status||"").toUpperCase())&&c.ativo!==false);
-  const valorCaixa=c=>{
-    if(c.saldoAtualCentavos!==undefined&&c.saldoAtualCentavos!==null){
-      const n=Number(c.saldoAtualCentavos);return Number.isSafeInteger(n)?n:null;
-    }
-    for(const key of ["saldoAtual","valorAtual","caixaAtual"]){
-      if(c[key]!==undefined&&c[key]!==null&&c[key]!=="")
-        return M.centavos(c,[],[key]);
-    }
-    return null;
-  };
-  const valores=caixas.map(valorCaixa);
-  const confiavel=valores.every(Number.isSafeInteger);
-  setTextSafe("kpiCaixaAtual",confiavel?moedaCentavosMasterLocal(valores.reduce((n,v)=>n+v,0)):"—");
-  setTextSafe("kpiCaixaAtualSub",`${caixas.length} caixa(s) aberto(s)${confiavel?"":" · saldo não confirmado"}`);
+  // O backend grava saldoAtualCentavos transacionalmente a cada movimento.
+  // Nunca repetir a soma/subtração de lançamentos sobre esse saldo.
+  setTextSafe("kpiCaixaAtual",k.caixaAtualCentavos===null?"—":moedaCentavosMasterLocal(k.caixaAtualCentavos));
+  setTextSafe("kpiCaixaAtualSub",`${k.caixasDia} caixa(s) aberto(s) no dia${k.caixasSaldoNaoConfirmado?" · divergência para conferência":""}`);
   const movOk=movimentosMasterLocal.carregada&&movimentosMasterLocal.escopo===escopoMasterLocal();
   if(movOk){
     const lancamentos=M.apenasTenant(State.getLancamentosFinanceiros?.()||[],tenantId)
@@ -1032,3 +1020,186 @@ document.addEventListener("integro-tela-alterada", evento => {
   const tela = evento.detail?.tela || "";
   if (tela) carregarModuloMasterLocal(tela).catch(erro => console.warn("[ÍNTEGRO] carga sob demanda", erro));
 });
+
+
+/* MASTER_LOCAL_M06_INSIGHTS_20261128
+ * Exibição somente leitura, a partir das coleções do Dashboard autorizadas por tenant.
+ * Sem metas fictícias, associação por nome de vendedor ou escrita financeira.
+ */
+(function(){
+  "use strict";
+  const moedaC=v=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v/100);
+  const ident=v=>String(v??"").trim();
+  const normal=v=>ident(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+  const escapar=v=>ident(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const idEquipe=r=>ident(r?.equipeId||r?.equipeUid||r?.unidadeId||r?.timeId||r?.grupoId);
+  const nomeEquipe=r=>ident(r?.equipeNome||r?.nomeEquipe||r?.unidadeNome||r?.unidade||r?.equipe);
+  const idVendedor=r=>ident(r?.vendedorId||r?.vendedorUid||r?.usuarioId||r?.responsavelId||r?.cobradorId);
+  const novo=(nome,chave)=>({nome,chave,vendido:0,vendas:0,recebido:0,pagamentos:0,clientes:new Set()});
+  const state={periodo:null,visao:"equipes"};
+  function resumir(dados,periodo,tenant){
+    const M=window.IntegroMasterLocalMetrics;
+    if(!M?.apenasTenant||!tenant)return null;
+    const colecao=k=>M.apenasTenant(Array.isArray(dados[k])?dados[k]:[],tenant);
+    const equipes=colecao("equipes"),usuarios=colecao("usuarios");
+    const vendas=colecao("vendas").filter(v=>!M.cancelada(v)&&M.diaVenda(v)>=periodo.inicio&&M.diaVenda(v)<=periodo.fim);
+    const pagamentos=colecao("pagamentos").filter(p=>M.pagamentoConfirmado(p)&&M.diaPagamento(p)>=periodo.inicio&&M.diaPagamento(p)<=periodo.fim);
+    const equipeMap=new Map(),equipeAlias=new Map(),equipeNomeMap=new Map();
+    const vendedorMap=new Map(),vendedorAlias=new Map(),usuarioAlias=new Map();
+    equipes.forEach(e=>{
+      const eid=ident(e.id||e.equipeId||e.uid),nome=ident(e.nome||e.nomeEquipe||e.equipeNome)||"Equipe";
+      if(!eid)return;
+      const chave="e:"+eid;
+      equipeAlias.set(eid,chave);
+      equipeMap.set(chave,novo(nome,chave));
+      const n=normal(nome);
+      if(n)equipeNomeMap.set(n,equipeNomeMap.has(n)?null:chave);
+    });
+    usuarios.forEach(u=>{
+      const ids=[u.id,u.uid,u.authUid,u.usuarioId].map(ident).filter(Boolean);
+      ids.forEach(uid=>usuarioAlias.set(uid,u));
+      if(!normal(u.tipoUsuario||u.perfil||u.cargoNome||u.cargo).includes("vendedor")||!ids.length)return;
+      const chave="v:"+ids[0],nome=ident(u.nomeCompleto||u.nome||u.email)||"Vendedor";
+      vendedorMap.set(chave,novo(nome,chave));
+      ids.forEach(uid=>vendedorAlias.set(uid,chave));
+    });
+    const desconhecidos=novo("Não identificadas","?");
+    const identificarEquipe=row=>{
+      const usuario=usuarioAlias.get(idVendedor(row));
+      const chave=equipeAlias.get(idEquipe(row)||idEquipe(usuario))||
+        equipeNomeMap.get(normal(nomeEquipe(row)||nomeEquipe(usuario)));
+      return chave?equipeMap.get(chave):null;
+    };
+    const identificarVendedor=row=>{
+      const chave=vendedorAlias.get(idVendedor(row));
+      return chave?vendedorMap.get(chave):null;
+    };
+    const aplicar=(row,tipo,valor)=>{
+      const equipe=identificarEquipe(row),vendedor=identificarVendedor(row);
+      [equipe,vendedor].filter(Boolean).forEach(alvo=>{
+        if(tipo==="venda"){alvo.vendas++;alvo.vendido+=valor;}
+        else{alvo.pagamentos++;alvo.recebido+=valor;const cid=ident(row.clienteOperacionalId||row.clienteId||row.clienteUid);if(cid)alvo.clientes.add(cid);}
+      });
+      if(!equipe){if(tipo==="venda"){desconhecidos.vendas++;desconhecidos.vendido+=valor;}
+        else{desconhecidos.pagamentos++;desconhecidos.recebido+=valor;}}
+    };
+    vendas.forEach(v=>aplicar(v,"venda",M.valorVenda(v)));
+    pagamentos.forEach(p=>aplicar(p,"pagamento",M.valorPagamento(p)));
+    const ordena=(a,b)=>b.recebido-a.recebido||b.vendido-a.vendido||a.nome.localeCompare(b.nome,"pt-BR");
+    const limites=window.CONFIG?.LIMITS||{};
+    const limitados=["equipes","usuarios","vendas","pagamentos"].filter(k=>{
+      const l=Number(limites[k.toUpperCase()]||({equipes:200,usuarios:300,vendas:500,pagamentos:1000})[k]);
+      return Number.isFinite(l)&&(dados[k]||[]).length>=l;
+    });
+    return {equipes:[...equipeMap.values()].sort(ordena),vendedores:[...vendedorMap.values()].sort(ordena),
+      desconhecidos,limitados,vendido:vendas.reduce((t,v)=>t+M.valorVenda(v),0),
+      recebido:pagamentos.reduce((t,p)=>t+M.valorPagamento(p),0),
+      vendas:vendas.length,pagamentos:pagamentos.length,
+      equipesAtivas:equipes.filter(e=>e.ativo!==false).length,
+      vendedoresAtivos:usuarios.filter(u=>u.ativo!==false&&normal(u.tipoUsuario||u.perfil||u.cargoNome||u.cargo).includes("vendedor")).length};
+  }
+  function garantir(){
+    const painel=document.querySelector("#dashboard .dashboard-analytics-grid");
+    if(!painel)return null;
+    let host=document.getElementById("mlDesempenhoOperacional");
+    if(host)return host;
+    host=document.createElement("section");host.id="mlDesempenhoOperacional";host.className="ml-desempenho";
+    host.innerHTML='<div class="ml-desempenho-topo"><div><small>VISÃO GERENCIAL</small><h3>Performance de equipes e vendedores</h3><p>Movimentações confirmadas do período, com vínculos verificados.</p></div><div class="ml-desempenho-abas" role="group" aria-label="Alternar desempenho"><button type="button" data-ml-visao="equipes" aria-pressed="true">Equipes</button><button type="button" data-ml-visao="vendedores" aria-pressed="false">Vendedores</button></div></div><div class="ml-desempenho-conteudo" aria-live="polite"></div>';
+    painel.insertAdjacentElement("afterend",host);
+    host.querySelectorAll("[data-ml-visao]").forEach(b=>b.addEventListener("click",()=>{state.visao=b.dataset.mlVisao;renderizar();}));
+    return host;
+  }
+  function renderizar(){
+    const host=garantir(),p=state.periodo;
+    if(!host||!p||!p.inicio||!p.fim)return;
+    const usuario=window.State?.getUsuario?.()||{};
+    const perfil=normal(window.IntegroAcesso?.acessoUsuario?.(usuario)?.perfil||usuario.tipoUsuario);
+    if(perfil!=="master_local"){host.hidden=true;return;}
+    host.hidden=false;
+    const data=window.__integroDashboardRealData,tenant=ident(window.State?.getTenantId?.());
+    const content=host.querySelector(".ml-desempenho-conteudo");
+    if(!data||ident(data.tenantId)!==tenant){
+      content.innerHTML='<div class="ml-desempenho-vazio">Aguardando dados operacionais autorizados.</div>';return;
+    }
+    const info=resumir(data,p,tenant);if(!info)return;
+    const items=state.visao==="equipes"?info.equipes:info.vendedores;
+    host.querySelectorAll("[data-ml-visao]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.mlVisao===state.visao)));
+    const stat=(label,val)=>'<div><small>'+label+'</small><strong>'+val+'</strong></div>';
+    const cards='<div class="ml-desempenho-numeros">'+stat("Equipes cadastradas",String(info.equipesAtivas))+
+      stat("Vendedores ativos",String(info.vendedoresAtivos))+stat("Vendas confirmadas",info.vendas+" · "+moedaC(info.vendido))+
+      stat("Recebido confirmado",moedaC(info.recebido))+'</div>';
+    const max=Math.max(1,...items.map(i=>i.recebido));
+    const rows=items.map((r,i)=>'<tr><td><span class="ml-desempenho-rank">'+(i+1)+'</span><strong>'+escapar(r.nome)+'</strong></td>'+
+      '<td><b>'+r.vendas+'</b><small>'+moedaC(r.vendido)+'</small></td>'+
+      '<td><b>'+r.pagamentos+'</b><small>'+moedaC(r.recebido)+'</small></td>'+
+      '<td>'+r.clientes.size+'</td><td><div class="ml-desempenho-barra"><span style="width:'+(100*r.recebido/max).toFixed(1)+'%"></span></div></td></tr>').join("");
+    const tabela=items.length?'<div class="ml-desempenho-rolagem"><table><thead><tr><th>'+(state.visao==="equipes"?"Equipe":"Vendedor")+'</th><th>Vendas</th><th>Pagamentos</th><th>Clientes com pagamento</th><th>Recebido relativo</th></tr></thead><tbody>'+rows+'</tbody></table></div>':
+      '<div class="ml-desempenho-vazio">Não existem cadastros vinculados para esta visualização.</div>';
+    const avisos=[];
+    if(info.desconhecidos.vendas||info.desconhecidos.pagamentos)
+      avisos.push(info.desconhecidos.vendas+" venda(s) e "+info.desconhecidos.pagamentos+" pagamento(s) sem equipe identificada não entram no ranking.");
+    if(info.limitados.length)avisos.push("Consulta pode estar parcial: limite atingido em "+info.limitados.join(", ")+".");
+    content.innerHTML=cards+tabela+'<p class="ml-desempenho-nota">'+escapar(avisos.join(" ")||"Ranking por recebimento confirmado; sem metas ou resultados presumidos.")+'</p>';
+    atualizarRanking(info);
+    atualizarEvolucao(data,p,tenant);
+  }
+  function atualizarRanking(info){
+    const host=document.getElementById("dashboardTeamRanking");
+    if(!host)return;
+    const heading=document.querySelector("#dashboard .dashboard-team-ranking-panel h3");
+    if(heading)heading.textContent="Ranking de equipes · recebido";
+    const items=info.equipes.filter(e=>e.pagamentos||e.vendas).slice(0,5);
+    if(!items.length){
+      host.innerHTML='<div class="ml-ranking-vazio"><span class="material-symbols-rounded">groups</span><strong>Sem movimentação no período</strong><small>'+info.equipes.length+' equipe(s) cadastrada(s). Selecione outras datas para comparar.</small></div>';
+      return;
+    }
+    const max=Math.max(1,...items.map(r=>r.recebido));
+    host.innerHTML=items.map((r,i)=>'<div class="ml-ranking-linha"><b class="ml-ranking-pos">'+(i+1)+'</b><div><strong>'+escapar(r.nome)+'</strong><small>'+r.vendas+' venda(s) · '+r.pagamentos+' pagamento(s)</small><div class="ml-ranking-faixa"><span style="width:'+(r.recebido/max*100).toFixed(1)+'%"></span></div></div><div class="ml-ranking-total"><strong>'+moedaC(r.recebido)+'</strong><small>recebido</small></div></div>').join("");
+  }
+  function atualizarEvolucao(dados,p,tenant){
+    const chart=document.getElementById("dashboardEvolutionChart");
+    if(!chart)return;
+    const unico=p.inicio===p.fim;
+    const heading=document.querySelector("#dashboard .dashboard-evolution-panel h3");
+    if(heading)heading.textContent=unico?"Resumo financeiro do dia":"Evolução do período";
+    chart.classList.toggle("ml-evolucao-dia",unico);
+    const M=window.IntegroMasterLocalMetrics;
+    if(!unico){
+      const intervalo=dia=>!!dia&&dia>=p.inicio&&dia<=p.fim;
+      const temVendas=M.apenasTenant(dados.vendas||[],tenant).some(v=>!M.cancelada(v)&&intervalo(M.diaVenda(v)));
+      const temPagamentos=M.apenasTenant(dados.pagamentos||[],tenant).some(v=>M.pagamentoConfirmado(v)&&intervalo(M.diaPagamento(v)));
+      const temLedger=M.apenasTenant(dados.lancamentos||[],tenant).some(l=>
+        l.cancelado!==true&&l.estornado!==true&&intervalo(M.diaSP(l.dataOperacional||l.data||l.criadoEm))&&
+        ["VENDA","PAGAMENTO","GASTO","DESPESA","RETIRADA","RETIRO","RECOLHIMENTO"].includes(ident(l.tipoLancamento||l.tipoMovimentacao||l.tipo).toUpperCase()));
+      const vazio=!temVendas&&!temPagamentos&&!temLedger;
+      chart.classList.toggle("ml-evolucao-vazia",vazio);
+      if(vazio)chart.innerHTML='<div class="ml-evolucao-vazio"><span class="material-symbols-rounded">monitoring</span><strong>Sem movimentos nos registros carregados</strong><small>Altere as datas para visualizar a evolução financeira.</small></div>';
+      return;
+    }
+    chart.classList.remove("ml-evolucao-vazia");
+    const porDia=(r)=>M.diaSP(r.dataOperacional||r.data||r.criadoEm)===p.inicio;
+    const vendas=M.apenasTenant(dados.vendas||[],tenant).filter(v=>!M.cancelada(v)&&M.diaVenda(v)===p.inicio);
+    const pagamentos=M.apenasTenant(dados.pagamentos||[],tenant).filter(v=>M.pagamentoConfirmado(v)&&M.diaPagamento(v)===p.inicio);
+    const lances=M.apenasTenant(dados.lancamentos||[],tenant).filter(l=>porDia(l)&&l.cancelado!==true&&l.estornado!==true&&
+      !["CANCELADO","ESTORNADO"].includes(ident(l.statusLancamento||l.status).toUpperCase()));
+    const tipo=l=>ident(l.tipoLancamento||l.tipoMovimentacao||l.tipo).toUpperCase();
+    const soma=(list,fn)=>list.reduce((n,r)=>n+fn(r),0);
+    const valor=l=>M.centavos(l,["valorCentavos"],["valor","valorLancamento"]);
+    const nova=v=>!normal(v.tipoVenda||v.tipo).includes("renov");
+    const partes=[
+      ["Novas",soma(vendas.filter(nova),M.valorVenda),"novas"],
+      ["Renovadas",soma(vendas.filter(v=>!nova(v)),M.valorVenda),"renovadas"],
+      ["Recebido",soma(pagamentos,M.valorPagamento),"recebido"],
+      ["Gastos",soma(lances.filter(l=>["GASTO","DESPESA"].includes(tipo(l))),valor),"gastos"],
+      ["Retiros",soma(lances.filter(l=>["RETIRADA","RETIRO"].includes(tipo(l))),valor),"retiros"]
+    ];
+    chart.innerHTML=partes.every(x=>x[1]===0)?
+      '<div class="ml-evolucao-vazio"><span class="material-symbols-rounded">monitoring</span><strong>Sem movimentações nesta data</strong><small>Selecione outros dias nos filtros para analisar a evolução.</small></div>':
+      '<div class="ml-evolucao-resumo">'+partes.map(x=>'<div class="ml-evolucao-'+x[2]+'"><small>'+x[0]+'</small><strong>'+moedaC(x[1])+'</strong></div>').join("")+'</div>';
+  }
+  document.addEventListener("integro-dashboard-periodo-aplicado",e=>{
+    state.periodo={inicio:ident(e.detail?.inicio),fim:ident(e.detail?.fim)};
+    renderizar();
+  });
+  window.IntegroMasterLocalDesempenho=Object.freeze({resumir,renderizar});
+})();

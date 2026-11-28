@@ -316,3 +316,380 @@ html[data-perfil-integro="master_local"] #dashboard .dashboard-empty-state {
     grid-column: 1 / -1;
   }
 }
+
+
+/* MASTER_LOCAL_M06_LAYOUT_20261128 — somente Dashboard e navegação Master Local */
+@media (min-width: 981px) {
+  html[data-perfil-integro="master_local"] body[data-integro-page="master-local"] #sidebar:not(.collapsed) #integroSidebarMenu .menu-label {
+    display: inline-block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    width: auto !important;
+    max-width: 170px !important;
+    color: #c8d7e9 !important;
+    font: 700 13px/1.35 Inter,system-ui,sans-serif !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  html[data-perfil-integro="master_local"] body[data-integro-page="master-local"]:not(.integro-desktop-nav-compact) #sidebar:not(.collapsed) #integroSidebarMenu .menu-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    width: 100% !important;
+    min-height: 43px !important;
+    padding: 9px 13px !important;
+    text-align: left !important;
+  }
+  html[data-perfil-integro="master_local"] body[data-integro-page="master-local"] #sidebar:not(.collapsed) #integroSidebarMenu .menu-item .menu-icon {
+    flex: 0 0 22px !important;
+    width: 22px !important;
+    text-align: center !important;
+  }
+}
+@media (min-width: 1360px) {
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-page-header {
+    position: relative;
+    justify-content: flex-end !important;
+    min-height: 52px;
+  }
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-page-header .dashboard-page-title {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%,-50%) !important;
+    margin: 0 !important;
+  }
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-page-title h2 {
+    text-align: center !important;
+  }
+}
+
+/* Conciliação é uma central de revisão de cadastros, não um KPI financeiro. */
+html[data-perfil-integro="master_local"] #dashboard #masterLocalConciliacaoCarteira {
+  display: none !important;
+}
+html[data-perfil-integro="master_local"] #dashboard .bottom-grid > .panel:nth-child(2) {
+  display: none !important; /* versão legada, substituída pela performance com filtro real */
+}
+html[data-perfil-integro="master_local"] #dashboard .dashboard-analytics-grid {
+  grid-template-columns: minmax(0,1.55fr) minmax(295px,.75fr) !important;
+  align-items: stretch;
+}
+html[data-perfil-integro="master_local"] #dashboard .dashboard-evolution-chart.ml-evolucao-dia {
+  height: auto !important;
+  min-height: 148px !important;
+  padding: 10px !important;
+  background: #f8fafc !important;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-evolucao-resumo {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 9px;
+  height: 100%;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-evolucao-resumo > div {
+  min-width: 0;
+  min-height: 74px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e2e9f2;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(7,26,51,.025);
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-evolucao-resumo small {
+  color: #667f9b;
+  font-weight: 800;
+  font-size: 11px;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-evolucao-resumo strong {
+  color: #122a4b;
+  font-weight: 900;
+  font-size: clamp(13px,1.2vw,18px);
+  letter-spacing: -.035em;
+  overflow-wrap: anywhere;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-evolucao-novas { border-top: 3px solid #e28b18 !important; }
+html[data-perfil-integro="master_local"] #dashboard .ml-evolucao-renovadas { border-top: 3px solid #315e91 !important; }
+html[data-perfil-integro="master_local"] #dashboard .ml-evolucao-recebido { border-top: 3px solid #23896a !important; }
+html[data-perfil-integro="master_local"] #dashboard .ml-evolucao-gastos { border-top: 3px solid #be6770 !important; }
+html[data-perfil-integro="master_local"] #dashboard .ml-evolucao-retiros { border-top: 3px solid #c88b43 !important; }
+html[data-perfil-integro="master_local"] #dashboard :is(.ml-evolucao-vazio,.ml-ranking-vazio) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-align: center;
+  min-height: 130px;
+  padding: 16px;
+  border: 1px dashed #dbe4ee;
+  border-radius: 13px;
+  background: #f9fbfd;
+}
+html[data-perfil-integro="master_local"] #dashboard :is(.ml-evolucao-vazio,.ml-ranking-vazio) .material-symbols-rounded {
+  color: #9cadbf;
+  font-size: 26px;
+}
+html[data-perfil-integro="master_local"] #dashboard :is(.ml-evolucao-vazio,.ml-ranking-vazio) strong {
+  font-size: 13px;
+  color: #304963;
+}
+html[data-perfil-integro="master_local"] #dashboard :is(.ml-evolucao-vazio,.ml-ranking-vazio) small {
+  color: #7990a8;
+  font-size: 11px;
+  line-height: 1.55;
+}
+html[data-perfil-integro="master_local"] #dashboard .dashboard-team-ranking {
+  display: grid;
+  gap: 8px;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-ranking-linha {
+  display: grid;
+  grid-template-columns: 30px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid #e7edf4;
+  border-radius: 12px;
+  background: #fff;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-ranking-pos {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #f3f6fa;
+  color: #48627f;
+  font-size: 12px;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-ranking-linha:first-child .ml-ranking-pos {
+  background: #fff3e2;
+  color: #a7631a;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-ranking-linha > div:nth-child(2) {
+  min-width: 0;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-ranking-linha strong {
+  display: block;
+  color: #153151;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-ranking-linha small {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: #70869c;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-ranking-total {
+  text-align: right;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-ranking-total strong {
+  font-size: 12px;
+  white-space: nowrap;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-ranking-faixa,
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-barra {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eaf0f5;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-ranking-faixa {
+  margin-top: 7px;
+}
+html[data-perfil-integro="master_local"] #dashboard :is(.ml-ranking-faixa,.ml-desempenho-barra) span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg,#e5ac52,#bb782e);
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho {
+  margin-top: 12px;
+  padding: clamp(14px,1.7vw,21px);
+  border: 1px solid #e1e8f0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(7,26,51,.035);
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-topo > div:first-child > small {
+  display: block;
+  color: #b76b25;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .09em;
+  margin-bottom: 4px;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-topo h3 {
+  color: #102746;
+  font-size: clamp(17px,1.55vw,21px);
+  line-height: 1.22;
+  margin: 0;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-topo p {
+  color: #72879e;
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 5px 0 0;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-abas {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  border: 1px solid #e1e9f2;
+  border-radius: 11px;
+  background: #f5f8fc;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-abas button {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 9px 13px;
+  font: 800 12px Inter,system-ui,sans-serif;
+  color: #607b99;
+  cursor: pointer;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-abas button[aria-pressed="true"] {
+  background: #fff;
+  color: #0e335a;
+  box-shadow: 0 2px 7px rgba(10,35,65,.09);
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-numeros {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 9px;
+  margin: 0 0 13px;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-numeros > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e2e9f0;
+  border-radius: 12px;
+  background: #f7f9fc;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-numeros small {
+  color: #67809a;
+  font-size: 11px;
+  font-weight: 750;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-numeros strong {
+  color: #142f4f;
+  font-size: clamp(13px,1.25vw,18px);
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-rolagem {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e7edf5;
+  border-radius: 12px;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 590px;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho th {
+  padding: 11px 12px;
+  color: #617a97;
+  font-size: 10px;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: .035em;
+  background: #f6f8fb;
+  white-space: nowrap;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho td {
+  padding: 11px 12px;
+  border-top: 1px solid #edf1f6;
+  color: #173355;
+  font-size: 12px;
+  font-weight: 750;
+  vertical-align: middle;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho td:first-child {
+  min-width: 145px;
+  white-space: nowrap;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho td small {
+  display: block;
+  margin-top: 4px;
+  color: #72869a;
+  font-size: 10px;
+  font-weight: 650;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-rank {
+  display: inline-grid;
+  place-items: center;
+  margin-right: 9px;
+  width: 23px;
+  height: 23px;
+  border-radius: 7px;
+  background: #eaf0f7;
+  color: #3f6181;
+  font-weight: 900;
+  font-size: 10px;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-nota {
+  margin: 12px 0 0;
+  color: #7d8fa2;
+  font-size: 11px;
+  line-height: 1.45;
+}
+html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-vazio {
+  padding: 22px;
+  text-align: center;
+  color: #7489a1;
+  font-size: 12px;
+}
+@media (max-width: 1180px) {
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-analytics-grid {
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+}
+@media (max-width: 760px) {
+  html[data-perfil-integro="master_local"] #dashboard .ml-evolucao-resumo {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+  html[data-perfil-integro="master_local"] #dashboard .ml-desempenho {
+    padding: 12px;
+    margin-top: 10px;
+  }
+  html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-topo {
+    align-items: stretch;
+  }
+  html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-abas {
+    width: 100%;
+  }
+  html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-abas button {
+    flex: 1;
+  }
+  html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-numeros {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 7px;
+  }
+  html[data-perfil-integro="master_local"] #dashboard .ml-ranking-linha {
+    grid-template-columns: 26px minmax(0,1fr) auto;
+    padding: 9px;
+  }
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-evolution-chart.ml-evolucao-vazia {height:auto !important;min-height:165px !important;display:grid;place-items:center;padding:10px !important;}
