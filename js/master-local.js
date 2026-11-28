@@ -455,22 +455,10 @@ function renderDashboardMasterLocal(){
   setTextSafe("kpiVendasNovas",moedaCentavosMasterLocal(somar(novas)));
   setTextSafe("kpiVendasRenovadas",moedaCentavosMasterLocal(somar(renovacoes)));
   setTextSafe("kpiVendasHojeSub",`${vendasHoje.length} venda(s) no dia`);
-  const caixas=M.apenasTenant(State.getCaixas?.()||[],tenantId)
-    .filter(c=>["ABERTO","REABERTO"].includes(String(c.status||"").toUpperCase())&&c.ativo!==false);
-  const valorCaixa=c=>{
-    if(c.saldoAtualCentavos!==undefined&&c.saldoAtualCentavos!==null){
-      const n=Number(c.saldoAtualCentavos);return Number.isSafeInteger(n)?n:null;
-    }
-    for(const key of ["saldoAtual","valorAtual","caixaAtual"]){
-      if(c[key]!==undefined&&c[key]!==null&&c[key]!=="")
-        return M.centavos(c,[],[key]);
-    }
-    return null;
-  };
-  const valores=caixas.map(valorCaixa);
-  const confiavel=valores.every(Number.isSafeInteger);
-  setTextSafe("kpiCaixaAtual",confiavel?moedaCentavosMasterLocal(valores.reduce((n,v)=>n+v,0)):"—");
-  setTextSafe("kpiCaixaAtualSub",`${caixas.length} caixa(s) aberto(s)${confiavel?"":" · saldo não confirmado"}`);
+  // O backend grava saldoAtualCentavos transacionalmente a cada movimento.
+  // Nunca repetir a soma/subtração de lançamentos sobre esse saldo.
+  setTextSafe("kpiCaixaAtual",k.caixaAtualCentavos===null?"—":moedaCentavosMasterLocal(k.caixaAtualCentavos));
+  setTextSafe("kpiCaixaAtualSub",`${k.caixasDia} caixa(s) aberto(s) no dia${k.caixasSaldoNaoConfirmado?" · divergência para conferência":""}`);
   const movOk=movimentosMasterLocal.carregada&&movimentosMasterLocal.escopo===escopoMasterLocal();
   if(movOk){
     const lancamentos=M.apenasTenant(State.getLancamentosFinanceiros?.()||[],tenantId)
