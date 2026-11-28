@@ -50,6 +50,19 @@
     }
     return 0;
   };
+  // M06_FINANCE_SYNC_20261128: preferir saldos atômicos de contratos, sem duplicar baixas.
+  const temCampo = (v,campos) => campos.some(k=>v?.[k]!==undefined&&v?.[k]!==null&&v?.[k]!=="");
+  const valorEmprestado = v => centavos(v,["valorEmprestadoCentavos","valorPrincipalCentavos"],["valorEmprestado","valorPrincipal"]);
+  const totalContrato = v => {
+    if(temCampo(v,["valorTotalVendaCentavos","valorTotalCentavos","valorTotalVenda","valorTotal"]))
+      return centavos(v,["valorTotalVendaCentavos","valorTotalCentavos"],["valorTotalVenda","valorTotal"]);
+    const principal=valorEmprestado(v);
+    if(temCampo(v,["jurosValorCentavos","jurosValor"]))
+      return principal+centavos(v,["jurosValorCentavos"],["jurosValor"]);
+    if(temCampo(v,["taxaJuros"])&&principal>0)
+      return Math.round(principal*(1+reais(v.taxaJuros)/100));
+    return centavos(v,["valorCentavos"],["valor"]);
+  };
   const saldoVenda = v => centavos(v, ["saldoDevedorCentavos","saldoAtualCentavos"], ["saldoDevedor","saldoAtual"]);
   const saldoCliente = c => centavos(c, ["saldoDevedorCentavos","saldoAtualCentavos"], ["saldoDevedor","saldoAtual","saldo"]);
   const valorVenda = v => centavos(v, ["valorTotalVendaCentavos","valorEmprestadoCentavos","valorCentavos"], ["valorTotalVenda","valorEmprestado","valor"]);
@@ -65,6 +78,44 @@
     .filter(i => texto(tenant) && texto(i?.clientePlataformaId || i?.tenantId || i?.empresaId) === texto(tenant) && i?.excluido !== true);
   const diaPagamento = p => diaSP(p.dataOperacional || p.data || p.dataPagamento || p.registradoEm || p.criadoEm);
   const diaVenda = v => diaSP(v.dataOperacional || v.dataVenda || v.data || v.criadoEm || v.criadoEmTexto);
+  const referenciasPagamento = p => texto(p.vendaId||p.idVenda||p.contratoId);
+  function carteiraPorContratos({tenantId,vendas=[],pagamentos=[]}={}){
+    const vs=apenasTenant(vendas,tenantId).filter(v=>!cancelada(v));
+    const pg=apenasTenant(pagamentos,tenantId).filter(pagamentoConfirmado);
+    const pagamentoPorVenda=new Map();
+    pg.forEach(p=>{const vid=referenciasPagamento(p);if(!vid)return;
+      pagamentoPorVenda.set(vid,(pagamentoPorVenda.get(vid)||0)+valorPagamento(p));});
+    const semSaldo=[];
+    const itens=vs.map(v=>{
+      const valorTotal=totalContrato(v);
+      const possuiSaldo=temCampo(v,["saldoDevedorCentavos","saldoAtualCentavos","saldoDevedor","saldoAtual"]);
+      const recebido=temCampo(v,["totalPagoCentavos","totalPago","valorTotalPago"])
+        ?centavos(v,["totalPagoCentavos"],["totalPago","valorTotalPago"])
+        :pagamentoPorVenda.get(texto(v.id))||0;
+      if(!possuiSaldo&&valorTotal===0)semSaldo.push(texto(v.id)||"?");
+      const saldo=quitada(v)?0:Math.max(0,possuiSaldo?saldoVenda(v):valorTotal-recebido);
+      return {venda:v,saldoCentavos:saldo,valorTotalCentavos:valorTotal,origem:possuiSaldo?"saldo-contrato":"total-menos-pago"};
+    });
+    return {centavos:itens.reduce((n,r)=>n+r.saldoCentavos,0),itens,semSaldo,parcial:semSaldo.length>0};
+  }
+  const caixaAberto = c => c?.ativo!==false&&c?.excluido!==true&&c?.cancelado!==true&&
+    ["ABERTO","REABERTO"].includes(status(c?.status||c?.statusCaixa));
+  const dataCaixa = c => diaSP(c?.dataOperacional||c?.dataCaixa||c?.dataAbertura||c?.abertoEm||c?.criadoEm);
+  const saldoCaixa = c => temCampo(c,["saldoAtualCentavos","saldoAtual","valorAtual","caixaAtual"])
+    ?centavos(c,["saldoAtualCentavos"],["saldoAtual","valorAtual","caixaAtual"]):null;
+  function caixasDoDia({tenantId,caixas=[]}={},dia=hojeSP()){
+    const abertos=apenasTenant(caixas,tenantId).filter(c=>caixaAberto(c)&&dataCaixa(c)===dia);
+    // Cada vendedor tem um caixa oficial por dia; duplicados não viram saldo disponível.
+    const unicos=new Map(), duplicados=[];
+    abertos.forEach(c=>{
+      const chave=texto(c.vendedorAuthUid||c.vendedorUid||c.vendedorId||c.usuarioId||c.id);
+      if(unicos.has(chave))duplicados.push(chave);
+      else unicos.set(chave,c);
+    });
+    const lista=[...unicos.values()],pendentes=lista.filter(c=>saldoCaixa(c)===null);
+    return {lista,quantidade:lista.length,centavos:pendentes.length||duplicados.length?null:
+      lista.reduce((n,c)=>n+saldoCaixa(c),0),pendentes:pendentes.map(c=>texto(c.id)),duplicados};
+  }
   function calcular({ tenantId, clientes = [], caixas = [], vendas = [], pagamentos = [], usuarios = [], solicitacoes = [] } = {}, data = hojeSP()) {
     const cl = apenasTenant(clientes,tenantId);
     const bx = apenasTenant(caixas,tenantId);
@@ -72,8 +123,10 @@
     const pg = apenasTenant(pagamentos,tenantId).filter(pagamentoConfirmado);
     const us = apenasTenant(usuarios,tenantId);
     const so = apenasTenant(solicitacoes,tenantId);
-    const carteiraVendas = vs.filter(v => !quitada(v) && saldoVenda(v)>1);
-    const carteiraCentavos = carteiraVendas.reduce((n,v) => n+saldoVenda(v),0);
+    const carteira=carteiraPorContratos({tenantId,vendas:vs,pagamentos:pg});
+    const carteiraVendas=carteira.itens.filter(r=>r.saldoCentavos>1).map(r=>r.venda);
+    const carteiraCentavos=carteira.centavos;
+    const caixasAtuais=caixasDoDia({tenantId,caixas:bx},data);
     const inadimplenciaCentavos = carteiraVendas
       .filter(v => Number(v.diasAtrasoAtual || v.diasAtraso || 0)>0 || v.inadimplente===true ||
         ["EM ATRASO","ATRASADO","ATRASO GRAVE","ATRASO_GRAVE","INADIMPLENTE"].includes(status(v.statusVenda || v.status)))
@@ -82,6 +135,10 @@
       tenantId: texto(tenantId),
       dataOperacional: data,
       carteiraCentavos,
+      carteiraParcial:carteira.parcial,
+      caixaAtualCentavos:caixasAtuais.centavos,
+      caixasDia:caixasAtuais.quantidade,
+      caixasSaldoNaoConfirmado:caixasAtuais.pendentes.length+caixasAtuais.duplicados.length,
       inadimplenciaCentavos,
       recebidoHojeCentavos: pg.filter(p=>diaPagamento(p)===data).reduce((n,p)=>n+valorPagamento(p),0),
       vendasHoje: vs.filter(v=>diaVenda(v)===data).length,
@@ -135,5 +192,6 @@
       comContratos:registros.filter(r=>r.contratosAtivos>0).length,registros};
   }
   return Object.freeze({ hojeSP,diaSP,centavos,reais,saldoVenda,saldoCliente,valorVenda,valorPagamento,
-    cancelada,quitada,pagamentoConfirmado,apenasTenant,diaPagamento,diaVenda,calcular,auditarCarteira });
+    cancelada,quitada,pagamentoConfirmado,apenasTenant,diaPagamento,diaVenda,calcular,auditarCarteira,
+    valorEmprestado,totalContrato,carteiraPorContratos,caixasDoDia,saldoCaixa,caixaAberto,dataCaixa });
 });
