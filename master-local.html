@@ -17592,6 +17592,9 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
       DASHBOARD_PERIODO.filtroManual = true;
       atualizarRotulosPeriodo(p);
       fechar();
+      // O filtro altera a janela consultada: buscar pagamentos e ledger do período,
+      // não reutilizar somente o cache de hoje.
+      await loadAllRealData();
       updateCards();
     };
 
