@@ -498,3 +498,12 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Correção em homologação:** um conjunto de estilos autoritativo em `css/integro-loading.css` para login e boot dos perfis (mesmas dimensões, centralização, cores, spinner e posição da barra); cache atualizado em login/Master Local/Master Global/Vendedor; logos e títulos unificados; `js/integro-loading-handoff.js` restaura imediatamente o percentual do login e `master-global.html`/`vendedor.html` respeitam a progressão contínua; `js/auth.js` atualiza ARIA.
 - **Regressão:** `tests/production-shell.test.js` verifica consistência do HTML/CSS e progresso monotônico na troca de rota. Sem alterações nas regras Firebase, contas, sessão e negócio.
 - **Status:** em desenvolvimento/homologação, sem merge/deploy em produção; falta CI e conferência visual/autenticada de login, transição e mobile para aceite final. M03 permanece aberto.
+
+### M06 — Dashboard Master Local: ranking, evolução e performance gerencial (28/11/2026)
+- **Estado:** branch de homologação feat/m06-master-local-performance-20261128; **NÃO PUBLICADO e NÃO FECHADO**.
+- **Alterações:** menu desktop com rótulos; evolução diária compacta com estado vazio real; ranking por recebido confirmado; painel por equipes/vendedores com período aplicado.
+- **Origem:** dados já autorizados do tenant no Dashboard, vendas válidas e pagamentos confirmados vinculados pelos IDs de equipe e vendedor; sem atribuição arbitrária de documentos sem vínculo.
+- **Integridade:** aviso ao atingir limites de carregamento, sem confundir ranking com lucro ou meta. Confrontar valores contra Vendas, Financeiro e Caixas em homologação autenticada.
+- **Conciliação:** resumo da auditoria ocultado no Dashboard, mantendo a Central de Conciliação acessível, sem exclusão ou regularização de registros.
+- **Arquivos:** js/master-local.js, css/dashboard-master-local.css, master-local.html e tests/master-local-desempenho-dashboard.test.js.
+- **Validação:** sintaxe JavaScript validada e smoke de tenant, cancelamentos e associação por ID aprovado; pendente rodar node --test tests/master-local-desempenho-dashboard.test.js e validar visual e valores reais no desktop/mobile.
