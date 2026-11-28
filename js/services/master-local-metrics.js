@@ -127,10 +127,11 @@
     const carteiraVendas=carteira.itens.filter(r=>r.saldoCentavos>1).map(r=>r.venda);
     const carteiraCentavos=carteira.centavos;
     const caixasAtuais=caixasDoDia({tenantId,caixas:bx},data);
-    const inadimplenciaCentavos = carteiraVendas
-      .filter(v => Number(v.diasAtrasoAtual || v.diasAtraso || 0)>0 || v.inadimplente===true ||
+    const inadimplenciaCentavos = carteira.itens
+      .filter(r=>r.saldoCentavos>1)
+      .filter(({venda:v}) => Number(v.diasAtrasoAtual || v.diasAtraso || 0)>0 || v.inadimplente===true ||
         ["EM ATRASO","ATRASADO","ATRASO GRAVE","ATRASO_GRAVE","INADIMPLENTE"].includes(status(v.statusVenda || v.status)))
-      .reduce((n,v)=>n+saldoVenda(v),0);
+      .reduce((n,r)=>n+r.saldoCentavos,0);
     return {
       tenantId: texto(tenantId),
       dataOperacional: data,
