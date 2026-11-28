@@ -507,3 +507,11 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Conciliação:** resumo da auditoria ocultado no Dashboard, mantendo a Central de Conciliação acessível, sem exclusão ou regularização de registros.
 - **Arquivos:** js/master-local.js, css/dashboard-master-local.css, master-local.html e tests/master-local-desempenho-dashboard.test.js.
 - **Validação:** sintaxe JavaScript validada e smoke de tenant, cancelamentos e associação por ID aprovado; pendente rodar node --test tests/master-local-desempenho-dashboard.test.js e validar visual e valores reais no desktop/mobile.
+
+### M06 — Conciliação financeira carteira × caixa (28/11/2026)
+- **Estado:** código em PR #110, **homologação pendente**; nenhum dado financeiro de produção foi escrito.
+- **Carteira:** contrato vigente soma principal e juros no valor total, subtrai recebimentos já reconhecidos; prioriza saldoDevedorCentavos transacional e evita dupla subtração.
+- **Caixa:** soma saldoAtualCentavos de cada caixa aberto do dia por vendedor, sem reaplicar movimentações já incorporadas; caixa sem saldo ou duplicado resulta em valor não confirmado, não em zero fabricado.
+- **Indicadores:** dashboard usa mesma regra de carteira/caixa do serviço master-local-metrics; seleção de outro período recarrega pagamentos/ledger, preservando escopo por tenant.
+- **Backend preservado:** venda desconta principal e acrescenta saldo com juros ao contrato; pagamento confirmado credita caixa e reduz saldo devedor. Ingresso credita; gasto/retirada debitam; recolhimento de caixa para tesouraria é saída, distinto de recebimento do cliente.
+- **Testes:** casos adicionados em tests/master-local-metrics.test.js; smoke isolado de sintaxe e valores realizado. Aguardam resultado da auditoria CI e conferência autenticada vendedor versus Master Local.
