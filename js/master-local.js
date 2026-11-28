@@ -1175,8 +1175,21 @@ document.addEventListener("integro-tela-alterada", evento => {
     const heading=document.querySelector("#dashboard .dashboard-evolution-panel h3");
     if(heading)heading.textContent=unico?"Resumo financeiro do dia":"Evolução do período";
     chart.classList.toggle("ml-evolucao-dia",unico);
-    if(!unico)return;
-    const M=window.IntegroMasterLocalMetrics,porDia=(r)=>M.diaSP(r.dataOperacional||r.data||r.criadoEm)===p.inicio;
+    const M=window.IntegroMasterLocalMetrics;
+    if(!unico){
+      const intervalo=dia=>!!dia&&dia>=p.inicio&&dia<=p.fim;
+      const temVendas=M.apenasTenant(dados.vendas||[],tenant).some(v=>!M.cancelada(v)&&intervalo(M.diaVenda(v)));
+      const temPagamentos=M.apenasTenant(dados.pagamentos||[],tenant).some(v=>M.pagamentoConfirmado(v)&&intervalo(M.diaPagamento(v)));
+      const temLedger=M.apenasTenant(dados.lancamentos||[],tenant).some(l=>
+        l.cancelado!==true&&l.estornado!==true&&intervalo(M.diaSP(l.dataOperacional||l.data||l.criadoEm))&&
+        ["VENDA","PAGAMENTO","GASTO","DESPESA","RETIRADA","RETIRO","RECOLHIMENTO"].includes(ident(l.tipoLancamento||l.tipoMovimentacao||l.tipo).toUpperCase()));
+      const vazio=!temVendas&&!temPagamentos&&!temLedger;
+      chart.classList.toggle("ml-evolucao-vazia",vazio);
+      if(vazio)chart.innerHTML='<div class="ml-evolucao-vazio"><span class="material-symbols-rounded">monitoring</span><strong>Sem movimentos nos registros carregados</strong><small>Altere as datas para visualizar a evolução financeira.</small></div>';
+      return;
+    }
+    chart.classList.remove("ml-evolucao-vazia");
+    const porDia=(r)=>M.diaSP(r.dataOperacional||r.data||r.criadoEm)===p.inicio;
     const vendas=M.apenasTenant(dados.vendas||[],tenant).filter(v=>!M.cancelada(v)&&M.diaVenda(v)===p.inicio);
     const pagamentos=M.apenasTenant(dados.pagamentos||[],tenant).filter(v=>M.pagamentoConfirmado(v)&&M.diaPagamento(v)===p.inicio);
     const lances=M.apenasTenant(dados.lancamentos||[],tenant).filter(l=>porDia(l)&&l.cancelado!==true&&l.estornado!==true&&
