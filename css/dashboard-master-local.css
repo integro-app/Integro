@@ -691,3 +691,5 @@ html[data-perfil-integro="master_local"] #dashboard .ml-desempenho-vazio {
     padding: 9px;
   }
 }
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-evolution-chart.ml-evolucao-vazia {height:auto !important;min-height:165px !important;display:grid;place-items:center;padding:10px !important;}
