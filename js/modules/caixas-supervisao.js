@@ -779,16 +779,19 @@
               ${ui.selected.has(text(row.id))?'checked':''} ${!podeSelecionar?'disabled':''}>
             <span class="material-symbols-rounded" aria-hidden="true">check</span>
           </label>
-          ${rotulo?`<span class="cx-team-day-status ${classeStatus}" aria-label="${rotulo}">
-            <span class="cx-status-dot" aria-hidden="true"></span>
-            ${rotulo}
-          </span>`:`<small class="cx-team-status-note">${!estrutura.caixasChecked||latest?'Situação a confirmar':'Sem caixa registrado'}</small>`}
+
           <span class="cx-team-avatar material-symbols-rounded" aria-hidden="true">groups</span>
           <div class="cx-team-head-main">
+            <div class="cx-team-title-row">
             <button class="cx-team-open" type="button" data-cx-open="${esc(row.id)}"
               aria-label="Abrir jornada da equipe ${esc(row.nome)}">
               <span class="cx-team-open-title">${esc(row.nome)}</span>
             </button>
+          ${rotulo?`<span class="cx-team-day-status ${classeStatus}" aria-label="${rotulo}">
+            <span class="cx-status-dot" aria-hidden="true"></span>
+            ${rotulo}
+          </span>`:`<small class="cx-team-status-note">${!estrutura.caixasChecked||latest?'Situação a confirmar':'Sem caixa registrado'}</small>`}
+            </div>
             <div class="cx-team-head-meta" aria-label="Informações da jornada da equipe">
               <span class="cx-team-head-meta-item cx-team-date">
                 <span class="material-symbols-rounded" aria-hidden="true">calendar_month</span>
