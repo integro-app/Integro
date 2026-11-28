@@ -1644,3 +1644,77 @@
     max-width:85px;padding:5px!important
   }
 }
+
+
+/* ÍNTEGRO | status imediatamente à direita do nome da equipe.
+   Aplica-se ao desktop e ao mobile sem alterar indicadores e regras. */
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-title-row{
+  display:inline-flex;align-items:center;justify-content:flex-start;
+  flex:0 1 auto;gap:8px;min-width:0;max-width:100%
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-title-row>.cx-team-open{
+  display:inline-flex!important;align-items:center;flex:0 1 auto!important;
+  justify-content:flex-start!important;min-width:0;max-width:100%;
+  white-space:nowrap;padding:0!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-title-row .cx-team-open-title{
+  display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  max-width:100%
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-title-row>.cx-team-day-status,
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-title-row>.cx-team-status-note{
+  display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 auto;margin:0!important;align-self:center;max-width:125px
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-main{
+  min-width:0;gap:10px
+}
+@container caixa-jornada (max-width:760px){
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top{
+    display:grid!important;grid-template-columns:28px 32px minmax(0,1fr) 29px;
+    gap:5px 7px!important;align-items:center!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-select{
+    grid-column:1;grid-row:1;align-self:center
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-avatar{
+    grid-column:2;grid-row:1;align-self:center
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-head-main{
+    display:contents!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-title-row{
+    grid-column:3;grid-row:1;display:flex;gap:6px;
+    width:100%;min-width:0;justify-self:stretch
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-title-row>.cx-team-day-status,
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-title-row>.cx-team-status-note{
+    padding:5px 7px!important;font-size:9px!important;
+    line-height:1.15!important;max-width:90px;white-space:nowrap
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-main>.cx-team-head-meta{
+    grid-column:1/-1;grid-row:2;min-width:0;width:100%
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-card-menu{
+    grid-column:4;grid-row:1;justify-self:end
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-detail-action{
+    grid-column:3/5;grid-row:3;justify-self:end
+  }
+}
+@container caixa-jornada (max-width:430px){
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top{
+    grid-template-columns:28px 30px minmax(0,1fr) 29px;
+    column-gap:5px!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-title-row{
+    gap:4px
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-title-row .cx-team-open-title{
+    font-size:clamp(14px,4cqi,18px)!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-title-row>.cx-team-day-status,
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-title-row>.cx-team-status-note{
+    padding:4px 5px!important;font-size:8px!important
+  }
+}
